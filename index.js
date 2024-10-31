@@ -3,7 +3,7 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const { connectDB } = require('./config/db');
 const { createBlog, showAllBlogs, showBlog, updateBlog, deleteBlog } = require('./controllers/blogController');
-const { registerUser, loginUser, authenticateToken, getUserProfile, updateUserProfile } = require('./controllers/authController');
+const { registerUser, loginUser, authenticateToken } = require('./controllers/authController');
 
 // Load environment variables
 dotenv.config();
@@ -18,8 +18,6 @@ app.use(cors());
 const authRoutes = express.Router();
 authRoutes.post('/register', registerUser);
 authRoutes.post('/login', loginUser);
-authRoutes.get('/profile', authenticateToken, getUserProfile); // this route for getting user profile
-authRoutes.put('/profile', authenticateToken, updateUserProfile); // this route for updating user profile
 
 const blogRoutes = express.Router();
 blogRoutes.post('/', authenticateToken, createBlog);
