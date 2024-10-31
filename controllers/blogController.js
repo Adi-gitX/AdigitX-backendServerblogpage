@@ -60,8 +60,34 @@ const createBlog = async (req, res) => {
 
 const showAllBlogs = async (req, res) => {
   try {
-    const blogs = await prisma.blogs.findMany();
-    res.status(200).json(blogs);
+    const { page = 1, limit = 10, search = "" } = req.query;
+    const skip = (page - 1) * limit;
+
+    const blogs = await prisma.blogs.findMany({
+      where: {
+        OR: [
+          { title: { contains: search, mode: "insensitive" } },
+          { content: { contains: search, mode: "insensitive" } },
+          { tags: { some: { name: { contains: search, mode: "insensitive" } } } }
+        ],
+        deleted: false
+      },
+      skip: parseInt(skip),
+      take: parseInt(limit),
+    });
+
+    const totalBlogs = await prisma.blogs.count({
+      where: {
+        OR: [
+          { title: { contains: search, mode: "insensitive" } },
+          { content: { contains: search, mode: "insensitive" } },
+          { tags: { some: { name: { contains: search, mode: "insensitive" } } } }
+        ],
+        deleted: false
+      }
+    });
+
+    res.status(200).json({ blogs, totalBlogs, page: parseInt(page), limit: parseInt(limit) });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Internal server error", error: error.message });
@@ -71,7 +97,7 @@ const showAllBlogs = async (req, res) => {
 const showBlog = async (req, res) => {
   try {
     const { id } = req.params;
-    const blog = await prisma.blogs.findUnique({ where: { id: parseInt(id) } });
+    const blog = await prisma.blogs.findUnique({ where: { id: parseInt(id), deleted: false } });
 
     if (!blog) {
       return res.status(404).json({ message: "Blog not found" });
@@ -89,7 +115,7 @@ const updateBlog = async (req, res) => {
     const { id } = req.params;
     const updateData = req.body;
 
-    const blog = await prisma.blogs.findUnique({ where: { id: parseInt(id) } });
+    const blog = await prisma.blogs.findUnique({ where: { id: parseInt(id), deleted: false } });
 
     if (!blog) {
       return res.status(404).json({ message: "Blog not found" });
@@ -111,13 +137,16 @@ const deleteBlog = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const blog = await prisma.blogs.findUnique({ where: { id: parseInt(id) } });
+    const blog = await prisma.blogs.findUnique({ where: { id: parseInt(id), deleted: false } });
 
     if (!blog) {
       return res.status(404).json({ message: "Blog not found" });
     }
 
-    await prisma.blogs.delete({ where: { id: parseInt(id) } });
+    await prisma.blogs.update({
+      where: { id: parseInt(id) },
+      data: { deleted: true }
+    });
 
     res.status(200).json({ message: "Blog deleted successfully" });
   } catch (error) {
